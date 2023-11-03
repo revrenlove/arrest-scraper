@@ -52,7 +52,7 @@ public class ArrestScraperService
         var url = countySite.Url;
 
         _logger.LogInformation(
-            "{Timestamp} - Checking {County}",
+            "{Timestamp} UTC - Checking {County}",
             DateTime.UtcNow.ToLongTimeString(),
             county);
 
@@ -68,7 +68,10 @@ public class ArrestScraperService
             }
             else
             {
-                _logger.LogInformation("No records found");
+                _logger.LogInformation(
+                    "{Timestamp} UTC - No records found for {County}",
+                    DateTime.UtcNow.ToLongTimeString(),
+                    county);
             }
         }
         catch (Exception ex)
