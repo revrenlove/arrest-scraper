@@ -78,7 +78,7 @@ public class ArrestScraperService
         {
             _logger.LogError(
                 ex,
-                "Unable to retrieve records for {county}",
+                "Unable to retrieve records for {County}",
                 county);
         }
     }
