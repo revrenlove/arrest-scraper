@@ -31,12 +31,19 @@ public class ArrestScraperService
 
     public async Task Execute()
     {
+        CheckRecords();
+
         while (await _timer.WaitForNextTickAsync())
         {
-            _appSettings
-                .CountySites
-                .ForEach(async countySite => await CheckRecords(countySite));
+            CheckRecords();
         }
+    }
+
+    private void CheckRecords()
+    {
+        _appSettings
+            .CountySites
+            .ForEach(async countySite => await CheckRecords(countySite));
     }
 
     private async Task CheckRecords(CountySite countySite)
@@ -79,14 +86,7 @@ public class ArrestScraperService
 
         _logger.LogInformation("{Names} Arrested in {County} County", names, county);
 
-        try
-        {
-            _emailHandler.Send(_appSettings.RecipientEmail, $"{names} Arrested In {county} County", url);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Unable to send email.");
-        }
+        _emailHandler.Send(_appSettings.RecipientEmail, $"{names} Arrested In {county} County", url);
     }
 
     private static Regex BuildSearchRegex(List<string> searchTerms)

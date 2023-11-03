@@ -1,4 +1,6 @@
-﻿using ArrestScraper.Cli;
+﻿using System.Net;
+using System.Net.Mail;
+using ArrestScraper.Cli;
 using ArrestScraper.Cli.Config;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,6 +17,17 @@ internal class Program
                 .Build()
                 .Get<AppSettings>()!;
 
+        if (appSettings.EmailCredentials is null ||
+            string.IsNullOrWhiteSpace(appSettings.EmailCredentials.EmailAddress) ||
+            string.IsNullOrWhiteSpace(appSettings.EmailCredentials.Key) ||
+            string.IsNullOrWhiteSpace(appSettings.EmailCredentials.Host) ||
+            appSettings.EmailCredentials.Port == default)
+        {
+            Console.WriteLine("Invalid email credentials supplied. Exiting.");
+
+            return;
+        }
+
         var timespan = TimeSpan.FromMinutes(appSettings.FrequencyInMinutes);
         var timer = new PeriodicTimer(timespan);
 
@@ -25,11 +38,9 @@ internal class Program
                     configure.AddConsole();
                 })
                 .AddSingleton<ArrestScraperService>()
-                .AddSingleton<EmailHandler>(serviceProvider =>
-                {
-                    return new(appSettings.EmailCredentials.EmailAddress, appSettings.EmailCredentials.Key);
-                })
+                .AddSingleton<EmailHandler>()
                 .AddSingleton<HttpClient>()
+                .AddSingleton(SmtpClientFactory)
                 .AddSingleton(timer)
                 .AddSingleton(appSettings)
                 .BuildServiceProvider();
@@ -38,4 +49,27 @@ internal class Program
 
         await arrestScraperService.Execute();
     }
+
+    private static Func<IServiceProvider, SmtpClient> SmtpClientFactory = (IServiceProvider serviceProvider) =>
+    {
+        var emailCredentials =
+            serviceProvider
+                .GetRequiredService<AppSettings>()
+                .EmailCredentials;
+
+        var networkCredential =
+            new NetworkCredential(
+                emailCredentials.EmailAddress,
+                emailCredentials.Key);
+
+        return new()
+        {
+            Host = emailCredentials.Host,
+            Port = emailCredentials.Port,
+            EnableSsl = true,
+            DeliveryMethod = SmtpDeliveryMethod.Network,
+            UseDefaultCredentials = false,
+            Credentials = networkCredential,
+        };
+    };
 }

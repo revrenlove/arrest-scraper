@@ -1,35 +1,37 @@
-using System.Net;
 using System.Net.Mail;
+using ArrestScraper.Cli.Config;
+using Microsoft.Extensions.Logging;
 
 namespace ArrestScraper.Cli;
 
 public class EmailHandler
 {
-    private const string SmtpHost = "smtp.gmail.com";
-    private const int SmtpPort = 587;
+    private readonly string _emailAddress;
+    private readonly ILogger _logger;
 
-    public EmailHandler(string emailAddress, string key)
+    private readonly SmtpClient _smtpClient;
+
+    public EmailHandler(
+        SmtpClient smtpClient,
+        AppSettings appSettings,
+        ILogger<EmailHandler> logger)
     {
-        EmailAddress = emailAddress;
-        Key = key;
+        _smtpClient = smtpClient;
+        _emailAddress = appSettings.EmailCredentials.EmailAddress;
+        _logger = logger;
     }
-
-    public string EmailAddress { get; }
-    public string Key { get; }
 
     public void Send(string to, string subject, string body)
     {
-        var smtpClient = new SmtpClient
-        {
-            Host = SmtpHost,
-            Port = SmtpPort,
-            EnableSsl = true,
-            DeliveryMethod = SmtpDeliveryMethod.Network,
-            UseDefaultCredentials = false,
-            Credentials = new NetworkCredential(EmailAddress, Key)
-        };
+        using var message = new MailMessage(_emailAddress, to, subject, body);
 
-        using var message = new MailMessage(EmailAddress, to, subject, body);
-        smtpClient.Send(message);
+        try
+        {
+            _smtpClient.Send(message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unable to send email.");
+        }
     }
 }
